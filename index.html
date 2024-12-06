@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drive Folder Viewer with Pagination</title>
+</head>
+
+<body>
+    <h1>Drive Folder Viewer</h1>
+    <div id="folderContents"></div>
+    <button id="prevPage" disabled>Previous</button>
+    <button id="nextPage" disabled>Next</button>
+
+    <script>
+        const scriptUrl = "https://script.google.com/macros/s/AKfycbyUGqhrji9b1w2RkocAFQYsGdpiZrQ5qaz2xfULGQa2tfQO2weGyWLL7EmrzZCKKSNE/exec";
+        let currentFolderId = "root"; // Default to root folder
+        let currentPageIndex = 0; // Start from the first page
+        const pageSize = 10; // Set page size to display 10 items per page
+
+        function fetchFolderContents(folderId, startIndex = 0) {
+            const url = `${scriptUrl}?action=getAllFilesAndFolders&folderId=${folderId}&startIndex=${startIndex}&pageSize=${pageSize}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    renderFolderContents(data);
+                    updatePaginationButtons(data);
+                })
+                .catch(err => {
+                    console.error("Error fetching folder contents:", err);
+                    document.getElementById("folderContents").innerHTML = `<p>Error fetching data. Please try again later.</p>`;
+                });
+        }
+
+        function renderFolderContents(data) {
+            const container = document.getElementById("folderContents");
+            container.innerHTML = ""; // Clear previous contents
+
+            if (data.items.length === 0) {
+                container.innerHTML = "<p>No files or folders found.</p>";
+                return;
+            }
+
+            const list = document.createElement("ul");
+            data.items.forEach(item => {
+                const listItem = document.createElement("li");
+                listItem.innerHTML = `
+          <strong>${item.type.toUpperCase()}:</strong> ${item.name}
+          ${item.type === "file" ? `<a href="${item.url}" target="_blank">Open</a>` : ""}
+          <span style="font-size: 0.9em; color: grey;">(Path: ${item.path})</span>
+        `;
+                list.appendChild(listItem);
+            });
+            container.appendChild(list);
+        }
+
+        function updatePaginationButtons(data) {
+            const prevButton = document.getElementById("prevPage");
+            const nextButton = document.getElementById("nextPage");
+
+            // Enable or disable buttons based on pagination state
+            prevButton.disabled = currentPageIndex === 0;
+            nextButton.disabled = !data.hasNextPage;
+
+            // Update button click handlers
+            prevButton.onclick = () => {
+                if (currentPageIndex > 0) {
+                    currentPageIndex -= pageSize;
+                    fetchFolderContents(currentFolderId, currentPageIndex);
+                }
+            };
+
+            nextButton.onclick = () => {
+                if (data.hasNextPage) {
+                    currentPageIndex += pageSize;
+                    fetchFolderContents(currentFolderId, currentPageIndex);
+                }
+            };
+        }
+
+        // Initial fetch
+        fetchFolderContents(currentFolderId);
+    </script>
+</body>
+
+</html>
